@@ -36,14 +36,86 @@ import java.util.regex.Pattern;
 public class TimelineEditOverlay extends XivOverlay {
 	private static final Logger log = LoggerFactory.getLogger(TimelineEditOverlay.class);
 	private final static Set<Long> DEFENSIVE_WHITELIST = new HashSet<>(Arrays.asList(
+			17L, // Sentinel
 			22L, // Bulwark
+			27L, // Cover
 			30L, // Hallowed Ground
+			40L, // Thrill of Battle
+			43L, // Holmgang
+			44L, // Vengeance
+			157L, // Manaward
+			735L, // Raw Intuition
+			2241L, // Shade Shift
+			2887L, // Dismantle
 			3540L, // Divine Veil
+			3542L, // Sheltron
+			3613L, // Collective Unconscious
+			3634L, // Dark Mind
+			3636L, // Shadow Wall
+			7382L, // Intervention
 			7385L, // Passage of Arms
+			7388L, // Shake it Off
+			7393L, // The Blackest Night
+			7394L, // Riddle of Earth
+			7405L, // Troubadour
+			7408L, // Nature's Minne
+			7432L, // Divine Benison
+			7433L, // Plenary Indulgence
+			7498L, // Third Eye
 			7531L, // Rampart
 			7535L, // Reprisal
+			7548L, // Arm's Length
+			7549L, // Feint
+			7560L, // Addle
+			16012L, // Shield Samba
+			16014L, // Improvisation
+			16015L, // Curing Waltz
+			16140L, // Camouflage
+			16148L, // Nebula
+			16160L, // Heart of Light
+			16161L, // Heart of Stone
+			16464L, // Nascent Glint
+			16471L, // Dark Missionary
+			16556L, // Celestial Intersection
+			16559L, // Neutral Sect
+			16889L, // Tactician
 			25746L, // Holy Sheltron
-			36920L // Guardian
+			25751L, // Bloodwhetting
+			25754L, // Oblation
+			25758L, // Heart of Corundum
+			25789L, // Improvised Finish
+			25799L, // Radiant Aegis
+			25857L, // Magick Barrier
+			25861L, // Aquaveil
+			34685L, // Tempera Coat
+			34686L, // Tempera Grassa
+			36920L, // Guardian
+			36923L, // Damnation
+			36927L, // Shadowed Vigil
+			36935L, // Great Nebula
+			36962L, // Tengentsu
+			37031L // Sun Sign
+	));
+	private final static Set<Long> HEALING_WHITELIST = new HashSet<>(Arrays.asList(
+			140L, // Benediction
+			3552L, // Equilibrium
+			3569L, // Asylum
+			3570L, // Tetragrammaton
+			3571L, // Assize
+			3614L, // Essential Dignity
+			7439L, // Earthly Star
+			7541L, // Second Wind
+			7542L, // Bloodbath
+			8324L, // Stellar Detonation
+			16151L, // Aurora
+			16553L, // Celestial Opposition
+			16557L, // Horoscope
+			16558L, // Horoscope (Part 2)
+			25830L, // Rekindle
+			25862L, // Liturgy of the Bell
+			28509L, // Liturgy of the Bell (Part 2)
+			36944L, // Earth's Reply
+			36997L // Lux Solaris
 	));
 
 	private final JButton bossButton;
@@ -228,6 +300,9 @@ public class TimelineEditOverlay extends XivOverlay {
 		if (DEFENSIVE_WHITELIST.contains(abilityEvent.getAbility().getId())) {
 			return true;
 		}
+		if (HEALING_WHITELIST.contains(abilityEvent.getAbility().getId())) {
+			return true;
+		}
 		return false;
 	}
 
@@ -236,7 +311,7 @@ public class TimelineEditOverlay extends XivOverlay {
 		this.zone = zoneChangeEvent.getZone();
 	}
 
-	@HandleEvents
+	@HandleEvents(order = 60_000)
 	public void handleAbilityUsedEvent(EventContext context, AbilityUsedEvent abilityEvent) {
 		if (manager.getCurrentProcessor() == null) {
 			return;

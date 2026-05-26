@@ -29,7 +29,7 @@ public final class TimelineToolsSettings {
 		showBossButton = new BooleanSetting(persistence, "timeline-tools.showBossButton", true);
 		showPhaseButton = new BooleanSetting(persistence, "timeline-tools.showPhaseButton", true);
 		showPlayerButton = new BooleanSetting(persistence, "timeline-tools.showPlayerButton", true);
-		calloutAdvanceSeconds = new DoubleSetting(persistence,"timeline-tools.calloutAdvanceSeconds", 3.0, 0, 15);
+		calloutAdvanceSeconds = new DoubleSetting(persistence,"timeline-tools.calloutAdvanceSeconds", 5.0, 0, 15);
 	}
 
 	public BooleanSetting getEmphasizedEnabled() {

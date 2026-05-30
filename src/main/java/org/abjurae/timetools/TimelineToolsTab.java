@@ -48,6 +48,8 @@ public class TimelineToolsTab extends TopDownSimplePluginTab {
 		JPanel editToolsPanel = new JPanel();
 		editToolsPanel.setLayout(new WrapLayout(FlowLayout.LEFT, 3, 3));
 		editToolsPanel.add(new BooleanSettingGui(settings.getAutoAddBossAbilities(), "Automatically Add Boss Abilities").getComponent());
+		editToolsPanel.add(new IntSettingGui(settings.getThrottleLimit(), "Throttle Limit (Stop counting an ability after this many occurences)").getComponent());
+		editToolsPanel.add(new IntSettingGui(settings.getThrottleTime(), "Throttle Time (Window in which occurences will be counted over)").getComponent());
 		editToolsPanel.add(new BooleanSettingGui(settings.getShowBossButton(), "Show Boss Ability Button").getComponent());
 		editToolsPanel.add(new BooleanSettingGui(settings.getShowPhaseButton(), "Show Boss Ability (With Phase) Button").getComponent());
 		editToolsPanel.add(new BooleanSettingGui(settings.getShowPlayerButton(), "Show Player Callout Button").getComponent());

@@ -18,6 +18,8 @@ public final class TimelineToolsSettings {
 	private final BooleanSetting showPhaseButton;
 	private final BooleanSetting showPlayerButton;
 	private final DoubleSetting calloutAdvanceSeconds;
+	private final IntSetting throttleLimit;
+	private final IntSetting throttleTime;
 
 	public TimelineToolsSettings(PersistenceProvider persistence) {
 		emphasizedEnabled = new BooleanSetting(persistence, "timeline-tools.emphasizedEnabled", true);
@@ -30,6 +32,8 @@ public final class TimelineToolsSettings {
 		showPhaseButton = new BooleanSetting(persistence, "timeline-tools.showPhaseButton", true);
 		showPlayerButton = new BooleanSetting(persistence, "timeline-tools.showPlayerButton", true);
 		calloutAdvanceSeconds = new DoubleSetting(persistence,"timeline-tools.calloutAdvanceSeconds", 5.0, 0, 15);
+		throttleLimit = new IntSetting(persistence, "timeline-tools.throttleLimit", 1);
+		throttleTime = new IntSetting(persistence, "timeline-tools.throttleTime", 10);
 	}
 
 	public BooleanSetting getEmphasizedEnabled() {
@@ -66,6 +70,14 @@ public final class TimelineToolsSettings {
 
 	public DoubleSetting getCalloutAdvanceSeconds() {
 		return calloutAdvanceSeconds;
+	}
+
+	public IntSetting getThrottleLimit() {
+		return throttleLimit;
+	}
+
+	public IntSetting getThrottleTime() {
+		return throttleTime;
 	}
 
 	/*public IntSetting getBarHeight() {

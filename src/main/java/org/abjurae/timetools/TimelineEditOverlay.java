@@ -3,13 +3,10 @@ package org.abjurae.timetools;
 import gg.xp.reevent.events.EventContext;
 import gg.xp.reevent.scan.HandleEvents;
 import gg.xp.reevent.scan.ScanMe;
-import gg.xp.xivdata.data.ZoneInfo;
-import gg.xp.xivdata.data.ZoneLibrary;
 import gg.xp.xivsupport.events.actlines.events.AbilityUsedEvent;
 import gg.xp.xivsupport.events.actlines.events.ZoneChangeEvent;
+import gg.xp.xivsupport.events.state.InCombatChangeEvent;
 import gg.xp.xivsupport.events.state.XivState;
-import gg.xp.xivsupport.events.state.combatstate.ActiveCastRepository;
-import gg.xp.xivsupport.events.state.combatstate.CastTracker;
 import gg.xp.xivsupport.gui.overlay.OverlayConfig;
 import gg.xp.xivsupport.gui.overlay.RefreshLoop;
 import gg.xp.xivsupport.gui.overlay.ScalableJFrame;
@@ -19,9 +16,12 @@ import gg.xp.xivsupport.models.XivAbility;
 import gg.xp.xivsupport.models.XivCombatant;
 import gg.xp.xivsupport.models.XivZone;
 import gg.xp.xivsupport.persistence.PersistenceProvider;
-import gg.xp.xivsupport.timelines.*;
+import gg.xp.xivsupport.timelines.CustomEventSyncController;
+import gg.xp.xivsupport.timelines.CustomTimelineEntry;
+import gg.xp.xivsupport.timelines.CustomTimelineItem;
+import gg.xp.xivsupport.timelines.TimelineCustomizations;
+import gg.xp.xivsupport.timelines.TimelineManager;
 import gg.xp.xivsupport.timelines.cbevents.CbEventType;
-import gg.xp.xivsupport.timelines.gui.TimelinesTab;
 import gg.xp.xivsupport.timelines.icon.ActionTimelineIcon;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +29,13 @@ import org.slf4j.LoggerFactory;
 import javax.swing.JButton;
 import javax.swing.JPanel;
 import java.awt.Color;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 @ScanMe
@@ -123,7 +129,6 @@ public class TimelineEditOverlay extends XivOverlay {
 	private final JButton playerButton;
 	private final JPanel panel;
 	private final TimelineManager manager;
-	private final ActiveCastRepository acr;
 	private final XivState state;
 	private final TimelineToolsSettings settings;
 	private boolean addingBossAbility = false;
@@ -131,23 +136,23 @@ public class TimelineEditOverlay extends XivOverlay {
 	private boolean addingPlayerAbility = false;
 	private XivZone zone;
 	private double lastAddedTime;
+	private final Map<Long, List<Double>> abilityRecords;
 
 	public TimelineEditOverlay(
 			OverlayConfig oc,
 			PersistenceProvider persistence,
 			TimelineManager manager,
-			ActiveCastRepository acr,
 			XivState state,
 			TimelineToolsSettings settings,
 			TimelineToolsColorProvider ttcp
 	) {
 		super("Timeline Tools", "overlays.timeline-tools", oc, persistence);
 		this.manager = manager;
-		this.acr = acr;
 		this.state = state;
 		this.settings = settings;
 		addingBossAbility = false;
 		addingPlayerAbility = false;
+		abilityRecords = new HashMap<>();
 
 		panel = new JPanel();
 		bossButton = new JButton("Boss");
@@ -171,6 +176,8 @@ public class TimelineEditOverlay extends XivOverlay {
 		if (settings.getShowPlayerButton().get()) {
 			panel.add(playerButton);
 		}
+		panel.setBackground(new Color(0, 0, 0, 0));
+		panel.setFocusable(false);
 		getPanel().add(panel);
 		settings.getShowBossButton().addListener(this::toggleShowBoss);
 		settings.getShowPhaseButton().addListener(this::toggleShowPhase);
@@ -266,6 +273,27 @@ public class TimelineEditOverlay extends XivOverlay {
 	}
 
 	private boolean shouldTrackBossAbility(XivAbility ability, XivCombatant source) {
+		if (!abilityPassesBossFilters(ability, source)) {
+			return false;
+		}
+		// Check for duplicates for auto add
+		if (!addingBossAbility && !addingBossPhaseAbility) {
+			if (abilityRecords.containsKey(ability.getId())) {
+				long count = abilityRecords.get(ability.getId()).stream().filter(time -> manager.getCurrentProcessor().getEffectiveTime() - time < settings.getThrottleTime().get()).count();
+				if (count >= settings.getThrottleLimit().get()) {
+					return false;
+				}
+			}
+			return Math.abs(manager.getCurrentProcessor().getEffectiveTime() - lastAddedTime) > 1 && manager.getCurrentProcessor().getEntries().stream().noneMatch(entry -> !entry.callout() &&
+					Math.abs(entry.time() - manager.getCurrentProcessor().getEffectiveTime()) < 2);
+		} else {
+			return manager.getCurrentProcessor().getEntries().stream().noneMatch(entry -> !entry.callout() &&
+					Math.abs(entry.time() - manager.getCurrentProcessor().getEffectiveTime()) < 2 &&
+					entry.name().equals(ability.getName()));
+		}
+	}
+
+	private boolean abilityPassesBossFilters(XivAbility ability, XivCombatant source) {
 		if (source.getType() != CombatantType.NPC && source.getType() != CombatantType.FAKE) {
 			return false;
 		}
@@ -282,15 +310,7 @@ public class TimelineEditOverlay extends XivOverlay {
 			// JP text = invisible cast, usually repositioning or auto attacks
 			return false;
 		}
-		// Check for duplicates for auto add
-		if (!addingBossAbility && !addingBossPhaseAbility) {
-			return Math.abs(manager.getCurrentProcessor().getEffectiveTime() - lastAddedTime) > 1 && manager.getCurrentProcessor().getEntries().stream().noneMatch(entry -> !entry.callout() &&
-					Math.abs(entry.time() - manager.getCurrentProcessor().getEffectiveTime()) < 2);
-		} else {
-			return manager.getCurrentProcessor().getEntries().stream().noneMatch(entry -> !entry.callout() &&
-					Math.abs(entry.time() - manager.getCurrentProcessor().getEffectiveTime()) < 2 &&
-					entry.name().equals(ability.getName()));
-		}
+		return true;
 	}
 
 	private boolean shouldTrackPlayerAbility(AbilityUsedEvent abilityEvent) {
@@ -329,5 +349,19 @@ public class TimelineEditOverlay extends XivOverlay {
 			addingBossPhaseAbility = false;
 			lastAddedTime = manager.getCurrentProcessor().getEffectiveTime();
 		}
+		if (abilityPassesBossFilters(abilityEvent.getAbility(), abilityEvent.getSource())) {
+			if (abilityRecords.containsKey(abilityEvent.getAbility().getId())) {
+				if (abilityRecords.get(abilityEvent.getAbility().getId()).stream().noneMatch(time -> manager.getCurrentProcessor().getEffectiveTime() - time < 1)) {
+					abilityRecords.get(abilityEvent.getAbility().getId()).add(manager.getCurrentProcessor().getEffectiveTime());
+				}
+			} else {
+				abilityRecords.put(abilityEvent.getAbility().getId(), new ArrayList<>(List.of(manager.getCurrentProcessor().getEffectiveTime())));
+			}
+		}
+	}
+
+	@HandleEvents
+	public void handleCombatChange(EventContext context, InCombatChangeEvent combatChangeEvent) {
+		abilityRecords.clear();
 	}
 }
